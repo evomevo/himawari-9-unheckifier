@@ -1,4 +1,4 @@
-# himawari9-unheckifier
+# himawari-9-unheckifier
 you know how gatekeeping exists? yeah no thank you have himawari data instead
 
 also for cmap you can replace bone_r with these:
