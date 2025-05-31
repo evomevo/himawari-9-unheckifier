@@ -23,19 +23,12 @@ vmin, vmax = 190, 310
 lon_min, lat_min = 95,  0  # 100°E, Equator
 lon_max, lat_max = 180, 60  # 180°E, 60°N
 
-# Set a desired resolution in degrees per pixel and a minimum height in pixels
-initial_resolution = 0.03  # degrees per pixel
-min_height = 3000
+# Set the desired resolution in degrees per pixel
+resolution = 0.02 # degrees per pixel
 
-# Derive width and height from the geographical span:
-W = int((lon_max - lon_min) / initial_resolution)
-H = int((lat_max - lat_min) / initial_resolution)
-
-# Enforce a minimum height. If H is smaller than min_height, adjust the resolution.
-if H < min_height:
-    H = min_height
-    adjusted_resolution = (lat_max - lat_min) / H
-    W = int((lon_max - lon_min) / adjusted_resolution)
+# Calculate width and height in pixels based on the geographical span:
+W = int((lon_max - lon_min) / resolution)
+H = int((lat_max - lat_min) / resolution)
 crs = CRS.from_string("EPSG:4326") # Plate Carrée = WGS84 with lat/lon degrees
 
 font_paths = [f.fname for f in fm.fontManager.ttflist if 'Montserrat' in f.name]
@@ -75,7 +68,7 @@ ir = scn_eq[band].data
 # Plot to a pixel-perfect canvas. No axes, no padding, no margins:
 dpi = 100  # so that W = figsize[0]*dpi -> figsize[0] = W/dpi
 fig = plt.figure(frameon=False, figsize=(W/dpi, H/dpi), dpi=dpi)
-ax = fig.add_subplot(1,1,1, projection=ccrs.PlateCarree())
+ax = fig.add_axes([0, 0, 1, 1], projection=ccrs.PlateCarree())
 ax.set_extent([lon_min, lon_max, lat_min, lat_max], ccrs.PlateCarree())
 
 # Mask out invalid (off-limb) pixels so they’re transparent
@@ -126,6 +119,7 @@ for lon in lon_ticks[::2]:
                       fontsize=10,
                       color='white',
                       ha='center', va='center',
+                      clip_on=True,
                       fontweight='medium')
 
         txt.set_path_effects([
@@ -136,6 +130,6 @@ ax.axis('off')
 
 # Save
 fileName = f'himawari-9_{band}_eq_{latest_dir}.png'
-fig.savefig(f'{fileName}', dpi=dpi, transparent=True)
+fig.savefig(f'{fileName}', dpi=dpi, transparent=True, bbox_inches='tight', pad_inches=0)
 plt.close(fig)
 print(f"Ding! Saved {fileName} with size {W}x{H} pixels.")

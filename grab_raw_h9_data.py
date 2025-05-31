@@ -1,7 +1,12 @@
 import os, boto3, botocore, bz2
 from datetime import datetime, timedelta, timezone
 
-def auto_download_latest_segments(band='B13', res='R20', flv='FLDK', hours_back=24):
+band = 'B13' # Up to 16 bands available for Himawari-8/9: B01, B02, B03, B04, B05, B06, B07, B08, B09, B10, B11, B12, B13, B14, B15, B16
+res = 'R20'
+flv = 'FLDK'
+hours_back = 24 # How many hours back to search for segments
+
+def auto_download_latest_segments(band=band, res=res, flv=flv, hours_back=hours_back):
     """
     Searches back up to `hours_back` hours (in 10-minute steps) for the
     most recent Himawari-9 .DAT.bz2 segments, downloads and decompresses them.
@@ -50,7 +55,7 @@ def auto_download_latest_segments(band='B13', res='R20', flv='FLDK', hours_back=
                 local_dat = local_bz2[:-4]
                 with bz2.open(local_bz2, 'rb') as f_in, open(local_dat, 'wb') as f_out:
                     f_out.write(f_in.read())
-                print(f"  → {fname} downloaded and decompressed.")
+                print(f"{fname} downloaded and decompressed.")
 
             print(f"All segments saved to: {local_dir}")
             return local_dir
@@ -59,4 +64,4 @@ def auto_download_latest_segments(band='B13', res='R20', flv='FLDK', hours_back=
     return None
 
 if __name__ == '__main__':
-    auto_download_latest_segments(hours_back=24)
+    auto_download_latest_segments()
