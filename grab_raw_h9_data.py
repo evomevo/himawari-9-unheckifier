@@ -1,10 +1,18 @@
 import os, boto3, botocore, bz2
 from datetime import datetime, timedelta, timezone
 
+# ─────────────────────────────────────────────────────────────────────────────
+# 0) CONFIGURATION
+# ─────────────────────────────────────────────────────────────────────────────
+
 band = 'B13' # Up to 16 bands available for Himawari-8/9: B01, B02, B03, B04, B05, B06, B07, B08, B09, B10, B11, B12, B13, B14, B15, B16
 res = 'R20'
 flv = 'FLDK'
 hours_back = 24 # How many hours back to search for segments
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 1) AUTO-DOWNLOAD LATEST SEGMENTS
+# ─────────────────────────────────────────────────────────────────────────────
 
 def auto_download_latest_segments(band=band, res=res, flv=flv, hours_back=hours_back):
     """
@@ -51,17 +59,23 @@ def auto_download_latest_segments(band=band, res=res, flv=flv, hours_back=hours_
                 fname = os.path.basename(key)
                 local_bz2 = os.path.join(local_dir, fname)
                 s3.download_file(bucket, key, local_bz2)
-                # decompress
+                # Decompress
                 local_dat = local_bz2[:-4]
                 with bz2.open(local_bz2, 'rb') as f_in, open(local_dat, 'wb') as f_out:
                     f_out.write(f_in.read())
-                print(f"{fname} downloaded and decompressed.")
+                # Delete the .bz2 compressed file to save space. Remove this line if you want to keep it.
+                os.remove(local_bz2)
+                print(f"   {fname} downloaded and decompressed, with the corresponding compressed file removed.")
 
             print(f"All segments saved to: {local_dir}")
             return local_dir
 
     print(f"No segments found in the last {hours_back} hours.")
     return None
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 2) RUN THE AUTO-DOWNLOAD FUNCTION
+# ─────────────────────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
     auto_download_latest_segments()
