@@ -5,16 +5,42 @@ from datetime import datetime, timedelta, timezone
 # 0) CONFIGURATION
 # ─────────────────────────────────────────────────────────────────────────────
 
-band = '13'
-hours_back = 24
+hours_back = 6  # How many hours back to search for segments
+product = 'ABI-L1b-RadF'  # GOES ABI Level 1b Radiance Full Disk
+band = 13
+
+# Configuration for both satellites
+satellites = [
+    {
+        "name": "goes-19",
+        "bucket": "noaa-goes19",
+        "product": product,
+        "band": band
+    },
+    {
+        "name": "goes-18",
+        "bucket": "noaa-goes18",
+        "product": product,
+        "band": band
+    }
+]
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 1) AUTO-DOWNLOAD LATEST SEGMENTS
+# 1) AUTO-DOWNLOAD LATEST SEGMENTS FUNCTION
 # ─────────────────────────────────────────────────────────────────────────────
 
-def auto_download_latest_segments(band=band, hours_back=hours_back):
-    product = 'ABI-L1b-RadF' # Full disk radiance
-    bucket = 'noaa-goes19'
+def auto_download_latest_goes(sat_dict):
+    """
+    Searches back up to `hours_back` hours (in 1-hour steps) for the most recent
+    full-globe .nc composite of a given GOES satellite, downloads it, and returns the local directory.
+    """
+
+    bucket = sat_dict["bucket"]
+    product = sat_dict["product"]
+    band = sat_dict["band"]
+    name = sat_dict["name"]
+
+    # Use unsigned S3 client for public buckets.
     s3 = boto3.client('s3', config=botocore.client.Config(signature_version=botocore.UNSIGNED))
 
     now = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
@@ -26,6 +52,7 @@ def auto_download_latest_segments(band=band, hours_back=hours_back):
         doy = ts.strftime('%j') # Day of year
         hour = ts.strftime('%H')
 
+        # S3 prefix: {product}/{year}/{day-of-year}/{hour}/
         prefix = f'{product}/{year}/{doy}/{hour}/'
 
         try:
@@ -40,26 +67,28 @@ def auto_download_latest_segments(band=band, hours_back=hours_back):
             if f'-M6C{band:0>2}' in obj['Key'] and obj['Key'].endswith('.nc')
         ]
 
+        if not files:
+            continue
+
         latest = sorted(files)[-1]
 
+        local_dir = os.path.join(f"{name}_raw", f'{year}{doy}_{hour}00')
+        os.makedirs(local_dir, exist_ok=True)
+        print(f"Found {name.upper()} Full Disk file for {year}-{doy} {hour} UTC")
 
-        if latest:
-            local_dir = os.path.join('goes19_raw', f'{year}{doy}_{hour}00')
-            os.makedirs(local_dir, exist_ok=True)
-            print(f"Found GOES-19 Full Disk file for {year}-{doy} {hour} UTC")
+        local_file = os.path.join(local_dir, os.path.basename(latest))
+        s3.download_file(bucket, latest, local_file)
+        print(f"   Downloaded {os.path.basename(latest)} to {local_dir}")
 
-            local_file = os.path.join(local_dir, os.path.basename(latest))
-            s3.download_file(bucket, latest, local_file)
-            print(f"   Downloaded {os.path.basename(latest)}")
+        return local_dir
 
-            return local_dir
-
-    print(f"No segments found in the last {hours_back} hours.")
+    print(f"No files found in the last {hours_back} hours in {bucket}/{product}.")
     return None
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 2) RUN THE AUTO-DOWNLOAD FUNCTION
+# 2) RUN THE AUTO-DOWNLOAD FUNCTION FOR BOTH SATELLITES
 # ─────────────────────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
-    auto_download_latest_segments()
+    for sat in satellites:
+        auto_download_latest_goes(sat)

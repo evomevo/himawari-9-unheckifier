@@ -5,21 +5,23 @@ from datetime import datetime, timedelta, timezone
 # 0) CONFIGURATION
 # ─────────────────────────────────────────────────────────────────────────────
 
+bucket = 'noaa-himawari9'
+product = 'AHI-L1b-FLDK' # Himawari-9 Full Disk Level 1b Radiance
 band = 'B13' # Up to 16 bands available for Himawari-8/9: B01, B02, B03, B04, B05, B06, B07, B08, B09, B10, B11, B12, B13, B14, B15, B16
 res = 'R20'
 flv = 'FLDK'
-hours_back = 24 # How many hours back to search for segments
+hours_back = 6 # How many hours back to search for segments
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1) AUTO-DOWNLOAD LATEST SEGMENTS
 # ─────────────────────────────────────────────────────────────────────────────
 
-def auto_download_latest_segments(band=band, res=res, flv=flv, hours_back=hours_back):
+def auto_download_latest_himawari():
     """
-    Searches back up to `hours_back` hours (in 10-minute steps) for the
-    most recent Himawari-9 .DAT.bz2 segments, downloads and decompresses them.
+    Searches back up to `hours_back` hours (in 10-minute steps) for the most recent
+    Himawari-9 .DAT.bz2 segments, downloads, decompresses them, and returns the local directory.
     """
-    bucket = 'noaa-himawari9'
+    
     s3 = boto3.client('s3', config=botocore.client.Config(signature_version=botocore.UNSIGNED))
 
     now = datetime.now(timezone.utc)
@@ -29,9 +31,13 @@ def auto_download_latest_segments(band=band, res=res, flv=flv, hours_back=hours_
 
     for i in range(max_attempts):
         ts = base_time - timedelta(minutes=10 * i)
-        yyyy, mm, dd = ts.strftime('%Y'), ts.strftime('%m'), ts.strftime('%d')
+        year = ts.strftime('%Y')
+        month = ts.strftime('%m')
+        day = ts.strftime('%d')
         hhmm = ts.strftime('%H%M')
-        prefix = f'AHI-L1b-FLDK/{yyyy}/{mm}/{dd}/{hhmm}/'
+
+        # {bucket}/{product}/YYYY/MM/DD/HHMM/
+        prefix = f'{product}/{year}/{month}/{day}/{hhmm}/'
 
         try:
             resp = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
@@ -51,9 +57,9 @@ def auto_download_latest_segments(band=band, res=res, flv=flv, hours_back=hours_
 
         if seg_keys:
             # Found the latest time with segments
-            local_dir = os.path.join('himawari9_raw', f'{yyyy}{mm}{dd}_{hhmm}')
+            local_dir = os.path.join('himawari9_raw', f'{year}{month}{day}_{hhmm}')
             os.makedirs(local_dir, exist_ok=True)
-            print(f"Found segments for {yyyy}-{mm}-{dd} {hhmm} UTC, downloading...")
+            print(f"Found segments for {year}-{month}-{day} {hhmm} UTC, downloading...")
 
             for key in sorted(seg_keys):
                 fname = os.path.basename(key)
@@ -65,12 +71,12 @@ def auto_download_latest_segments(band=band, res=res, flv=flv, hours_back=hours_
                     f_out.write(f_in.read())
                 # Delete the .bz2 compressed file to save space. Remove this line if you want to keep it.
                 os.remove(local_bz2)
-                print(f"   {fname} downloaded and decompressed, with the corresponding compressed file removed.")
+                print(f"   Downloaded {fname} and decompressed into {local_dir}.")
 
             print(f"All segments saved to: {local_dir}")
             return local_dir
 
-    print(f"No segments found in the last {hours_back} hours.")
+    print(f"No segments found in the last {hours_back} hours in {bucket}/{product}.")
     return None
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -78,4 +84,4 @@ def auto_download_latest_segments(band=band, res=res, flv=flv, hours_back=hours_
 # ─────────────────────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
-    auto_download_latest_segments()
+    auto_download_latest_himawari()
