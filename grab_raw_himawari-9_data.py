@@ -1,20 +1,20 @@
 import os, boto3, botocore, bz2
 from datetime import datetime, timedelta, timezone
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # 0) CONFIGURATION
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 bucket = 'noaa-himawari9'
-product = 'AHI-L1b-FLDK' # Himawari-9 Full Disk Level 1b Radiance
+product = 'AHI-L1b-FLDK'
 band = 'B13' # Up to 16 bands available for Himawari-8/9: B01, B02, B03, B04, B05, B06, B07, B08, B09, B10, B11, B12, B13, B14, B15, B16
 res = 'R20'
 flv = 'FLDK'
 hours_back = 6 # How many hours back to search for segments
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # 1) AUTO-DOWNLOAD LATEST SEGMENTS
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 def auto_download_latest_himawari():
     """
@@ -57,7 +57,7 @@ def auto_download_latest_himawari():
 
         if seg_keys:
             # Found the latest time with segments
-            local_dir = os.path.join('himawari9_raw', f'{year}{month}{day}_{hhmm}')
+            local_dir = os.path.join('himawari-9_raw', f'{year}{month}{day}_{hhmm}')
             os.makedirs(local_dir, exist_ok=True)
             print(f"Found segments for {year}-{month}-{day} {hhmm} UTC, downloading...")
 
@@ -79,9 +79,9 @@ def auto_download_latest_himawari():
     print(f"No segments found in the last {hours_back} hours in {bucket}/{product}.")
     return None
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # 2) RUN THE AUTO-DOWNLOAD FUNCTION
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 if __name__ == '__main__':
     auto_download_latest_himawari()
